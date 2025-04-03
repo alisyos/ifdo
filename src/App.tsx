@@ -94,9 +94,11 @@ function App() {
 
     setLoading(true);
     setError('');
+    setData([]);
     setApiResponse(null);
     try {
-      const proxyUrl = `http://localhost:5000/proxy-api?url=${encodeURIComponent(url)}`;
+      const encodedUrl = encodeURIComponent(url);
+      const proxyUrl = `/proxy-api?url=${encodedUrl}`;
       console.log('프록시 URL로 요청:', proxyUrl);
       
       const response = await axios.get(proxyUrl);
@@ -132,47 +134,41 @@ function App() {
   };
 
   // GPT 분석 요청 함수
-  const requestGptAnalysis = async (customPrompt?: string) => {
-    if (!apiResponse && !testMode) {
-      setError('분석할 데이터가 없습니다. 먼저 API 요청을 실행해주세요.');
-      return;
-    }
-
+  const requestGptAnalysis = async (prompt: string) => {
     setGptLoading(true);
     setGptAnalysis('');
+    
     try {
-      console.log('GPT 분석 요청 시작');
-      
       // 분석할 데이터 준비
-      const analyticsData = testMode 
-        ? data // 테스트 모드일 경우 현재 차트에 표시된 데이터
-        : apiResponse?.data; // API 응답 데이터
+      const analyticsData = {
+        stats: stats || {},
+        chartData: data
+      };
       
-      // 서버로 분석 요청 전송
-      const response = await axios.post('http://localhost:5000/api/analyze', {
-        data: analyticsData,
-        customPrompt: customPrompt || '' // 사용자 정의 프롬프트 전달
-      }, {
+      // 로컬 서버에 분석 요청
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: analyticsData,
+          prompt: prompt
+        })
       });
-
-      console.log('GPT 분석 응답:', response.data);
       
-      if (response.data.error) {
-        throw new Error(response.data.message || 'GPT 분석 중 오류가 발생했습니다.');
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.message || '분석 중 오류가 발생했습니다.');
       }
       
-      if (response.data.analysis) {
-        setGptAnalysis(response.data.analysis);
-      } else {
-        throw new Error('분석 결과가 없습니다.');
-      }
-    } catch (error: any) {
-      console.error('GPT 분석 오류:', error);
-      setError(error.message || 'GPT 분석 중 오류가 발생했습니다.');
+      // 분석 결과 표시
+      setGptAnalysis(responseData.analysis);
+    } catch (error) {
+      console.error('GPT 분석 요청 오류:', error);
       setGptAnalysis('');
+      setError(`GPT 분석 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setGptLoading(false);
     }

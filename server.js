@@ -4,6 +4,7 @@ require('dotenv').config({ path: '.env.server' });
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -11,6 +12,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // CORS 설정
 app.use(cors());
+
+// 정적 파일 서빙 설정 (React 빌드 파일)
+app.use(express.static(path.join(__dirname, 'build')));
 
 // API 프록시 엔드포인트
 app.get('/proxy-api', async (req, res) => {
@@ -413,9 +417,9 @@ app.post('/api/analyze', express.json({ limit: '10mb' }), async (req, res) => {
   }
 });
 
-// 기본 응답
-app.get('/', (req, res) => {
-  res.send('IFDO 프록시 서버가 실행 중입니다. /proxy-api 엔드포인트를 사용하세요.');
+// 모든 다른 GET 요청은 React 앱으로 라우팅
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 app.listen(PORT, () => {
