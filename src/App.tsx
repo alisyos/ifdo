@@ -23,7 +23,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  DialogContentText
+  DialogContentText,
+  InputAdornment
 } from '@mui/material';
 import axios from 'axios';
 import { 
@@ -36,8 +37,15 @@ import {
   Legend,
   ResponsiveContainer,
   BarChart,
-  Bar
+  Bar,
+  AreaChart,
+  Area
 } from 'recharts';
+import LinkIcon from '@mui/icons-material/Link';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
 interface AnalyticsData {
   date: string;
@@ -647,86 +655,235 @@ function App() {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          웹사이트 분석 리포트
-        </Typography>
-        
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <TextField
-            fullWidth
-            label="API URL"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            margin="normal"
-            placeholder="http://ifdo.co.kr/analytics/JSONAPI.apz?authkey=..."
-            helperText="전체 URL을 입력하세요."
-            disabled={testMode}
-          />
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
-            <Button 
-              variant="contained" 
-              onClick={fetchAnalytics}
-              disabled={loading || (!url && !testMode)}
-              sx={{ flexGrow: 1, mr: 1 }}
-            >
-              {loading ? <CircularProgress size={24} /> : '데이터 로드'}
-            </Button>
-            <Button
-              variant={testMode ? "contained" : "outlined"}
-              color={testMode ? "secondary" : "primary"}
-              onClick={() => {
-                setTestMode(!testMode);
-                if (!testMode) {
-                  // 테스트 모드 활성화 시 샘플 데이터 자동 로드
-                  setTimeout(() => fetchAnalytics(), 100);
-                }
-              }}
-              sx={{ whiteSpace: 'nowrap', mr: 1 }}
-            >
-              {testMode ? "테스트 모드 해제" : "테스트 모드"}
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleOpenPromptDialog}
-              disabled={gptLoading || (data.length === 0 && !apiResponse)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              {gptLoading ? <CircularProgress size={24} color="inherit" /> : 'GPT 분석'}
-            </Button>
-          </Box>
+    <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 2,
+          width: '100%',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: { xs: 2, sm: 3, md: 4 }
+        }}
+      >
+        <Box 
+          sx={{ 
+            mb: 4,
+            textAlign: 'center',
+            p: 4,
+            borderRadius: 3,
+            background: 'linear-gradient(145deg, #3B4BDD 0%, #21D07B 100%)',
+            color: 'white',
+            boxShadow: '0 10px 20px rgba(59, 75, 221, 0.15)'
+          }}
+        >
+          <Typography 
+            variant="h4" 
+            gutterBottom
+            sx={{
+              fontWeight: 800,
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              mb: 1,
+              color: 'white'
+            }}
+          >
+            IFDO 리포트 API 분석
+          </Typography>
+          <Typography 
+            variant="subtitle1"
+            sx={{
+              fontWeight: 500,
+              opacity: 0.9,
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+              color: 'white'
+            }}
+          >
+            방문 리포트 기반 GPT 인사이트 추출
+          </Typography>
+        </Box>
+
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 4, 
+            mb: 4, 
+            borderRadius: 2,
+            background: 'white'
+          }}
+        >
+          <Grid container spacing={3} alignItems="center">
+            <Grid item xs={12} md={8}>
+              <TextField
+                fullWidth
+                label="API URL"
+                variant="outlined"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://ifdo.co.kr/exe/web_visit_list.html"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LinkIcon color="primary" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudDownloadIcon />}
+                  onClick={fetchAnalytics}
+                  disabled={loading}
+                  sx={{ flex: 1 }}
+                >
+                  {loading ? '로딩 중...' : '데이터 로드'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => {
+                    setData(generateSampleData());
+                    setApiResponse(null);
+                    setTestMode(true);
+                  }}
+                  sx={{ flex: 1 }}
+                >
+                  테스트 모드
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6} sx={{ mt: 2 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<PsychologyIcon />}
+                onClick={handleOpenPromptDialog}
+                disabled={loading || (!data.length && !testMode)}
+                fullWidth
+              >
+                GPT 분석
+              </Button>
+            </Grid>
+          </Grid>
           
           {error && (
-            <Alert severity={testMode ? "info" : "warning"} sx={{ mt: 2 }}>
+            <Alert severity="error" sx={{ mt: 2 }}>
               {error}
             </Alert>
           )}
         </Paper>
-        
+
         {/* GPT 분석 결과 */}
         {gptLoading ? (
-          <Paper sx={{ p: 3, mb: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+          <Paper 
+            sx={{ 
+              p: 4, 
+              mb: 4, 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              minHeight: '300px',
+              borderRadius: 2,
+              background: 'linear-gradient(145deg, #f6f8fe 0%, #ffffff 100%)',
+              boxShadow: 3
+            }}
+          >
             <Box sx={{ textAlign: 'center' }}>
-              <CircularProgress sx={{ mb: 2 }} />
-              <Typography>GPT가 데이터를 분석하고 있습니다...</Typography>
+              <CircularProgress 
+                sx={{ 
+                  mb: 3,
+                  color: 'primary.main'  
+                }} 
+              />
+              <Typography 
+                variant="h6"
+                sx={{
+                  fontWeight: 500,
+                  color: 'text.primary'
+                }}
+              >
+                GPT가 데이터를 분석하고 있습니다...
+              </Typography>
+              <Typography 
+                variant="body2"
+                sx={{
+                  mt: 1,
+                  color: 'text.secondary',
+                  maxWidth: '600px'
+                }}
+              >
+                풍부한 인사이트를 제공하기 위해 AI가 방문자 데이터를 심층 분석 중입니다.
+                잠시만 기다려주세요.
+              </Typography>
             </Box>
           </Paper>
         ) : gptAnalysis ? (
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom align="center">
-              GPT 데이터 분석 결과
-            </Typography>
-            <Box sx={{ 
-              p: 2, 
-              bgcolor: '#f8f9fa', 
-              borderRadius: 1,
-              whiteSpace: 'pre-wrap',
-              lineHeight: 1.6
-            }}>
-              {gptAnalysis}
+          <Paper 
+            sx={{ 
+              p: 0, 
+              mb: 4, 
+              overflow: 'hidden',
+              borderRadius: 2,
+              boxShadow: 3
+            }}
+          >
+            <Box
+              sx={{
+                p: 3,
+                bgcolor: 'primary.main',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'rgba(255,255,255,0.2)'
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
+                GPT 데이터 분석 결과
+              </Typography>
+            </Box>
+            
+            <Box 
+              sx={{ 
+                p: 4,
+                bgcolor: '#ffffff',
+                borderTop: '1px solid rgba(0,0,0,0.05)'
+              }}
+            >
+              <Typography 
+                variant="body1"
+                sx={{ 
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.8,
+                  color: 'text.primary',
+                  fontWeight: 400,
+                  '& strong': {
+                    fontWeight: 600,
+                    color: 'primary.main'
+                  }
+                }}
+              >
+                {gptAnalysis}
+              </Typography>
             </Box>
           </Paper>
         ) : null}
@@ -735,53 +892,251 @@ function App() {
           <>
             {/* 통계 요약 */}
             {(stats || calculateChartStats) && (
-              <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom align="center">
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  mb: 4, 
+                  borderRadius: 2,
+                  background: 'white',
+                  boxShadow: 3
+                }}
+              >
+                <Typography 
+                  variant="h5" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&::before': {
+                      content: '""',
+                      display: 'block',
+                      width: 4,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      mr: 2,
+                      borderRadius: 1
+                    }
+                  }}
+                >
                   방문 통계 요약
                 </Typography>
-                <Grid container spacing={2}>
+                
+                <Grid container spacing={3}>
                   <Grid item xs={12} md={6} lg={3}>
-                    <Card>
+                    <Card sx={{ 
+                      borderRadius: 2, 
+                      boxShadow: 2,
+                      transition: 'transform 0.3s, box-shadow 0.3s',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: 4
+                      }
+                    }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">총 방문자 수</Typography>
-                        <Typography variant="h4">{(stats?.totalVisits || calculateChartStats?.totalVisitors || 0).toLocaleString()}</Typography>
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 0.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: 'primary.main',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          총 방문자 수
+                        </Typography>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: 700,
+                            color: 'text.primary'
+                          }}
+                        >
+                          {(stats?.totalVisits || calculateChartStats?.totalVisitors || 0).toLocaleString()}
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
+                  
                   <Grid item xs={12} md={6} lg={3}>
-                    <Card>
+                    <Card sx={{ 
+                      borderRadius: 2, 
+                      boxShadow: 2,
+                      transition: 'transform 0.3s, box-shadow 0.3s',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: 4
+                      }
+                    }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">총 페이지뷰</Typography>
-                        <Typography variant="h4">{(stats?.totalPageviews || calculateChartStats?.totalPageviews || 0).toLocaleString()}</Typography>
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 0.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: 'secondary.main',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          총 페이지뷰
+                        </Typography>
+                        <Typography 
+                          variant="h4"
+                          sx={{ 
+                            fontWeight: 700,
+                            color: 'text.primary'
+                          }}
+                        >
+                          {(stats?.totalPageviews || calculateChartStats?.totalPageviews || 0).toLocaleString()}
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
+                  
                   <Grid item xs={12} md={6} lg={3}>
-                    <Card>
+                    <Card sx={{ 
+                      borderRadius: 2, 
+                      boxShadow: 2,
+                      transition: 'transform 0.3s, box-shadow 0.3s',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: 4
+                      }
+                    }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">일평균 방문자</Typography>
-                        <Typography variant="h4">{(stats?.avgVisitors || calculateChartStats?.avgVisitors || 0).toLocaleString()}</Typography>
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 0.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: '#FFB954',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          일평균 방문자
+                        </Typography>
+                        <Typography 
+                          variant="h4"
+                          sx={{ 
+                            fontWeight: 700,
+                            color: 'text.primary'
+                          }}
+                        >
+                          {(stats?.avgVisitors || calculateChartStats?.avgVisitors || 0).toLocaleString()}
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
+                  
                   <Grid item xs={12} md={6} lg={3}>
-                    <Card>
+                    <Card sx={{ 
+                      borderRadius: 2, 
+                      boxShadow: 2,
+                      transition: 'transform 0.3s, box-shadow 0.3s',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: 4
+                      }
+                    }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">일평균 페이지뷰</Typography>
-                        <Typography variant="h4">{(stats?.avgPageviews || calculateChartStats?.avgPageviews || 0).toLocaleString()}</Typography>
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 0.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: '#FF5B5B',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          일평균 페이지뷰
+                        </Typography>
+                        <Typography 
+                          variant="h4"
+                          sx={{ 
+                            fontWeight: 700,
+                            color: 'text.primary'
+                          }}
+                        >
+                          {(stats?.avgPageviews || calculateChartStats?.avgPageviews || 0).toLocaleString()}
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                 </Grid>
                 
-                <Divider sx={{ my: 3 }} />
+                <Divider sx={{ my: 4 }} />
                 
-                <Grid container spacing={2}>
+                <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
-                    <Card>
+                    <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">최대 방문일</Typography>
-                        <Typography variant="h5">
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: 'primary.main',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          최대 방문일
+                        </Typography>
+                        <Typography 
+                          variant="h5"
+                          sx={{ 
+                            fontWeight: 600,
+                            color: 'text.primary'
+                          }}
+                        >
                           {stats?.maxVisitorsDate || calculateChartStats?.maxVisitorsDate || ''}
                           {stats?.maxVisitors || calculateChartStats?.maxVisitors 
                             ? ` (${(stats?.maxVisitors || calculateChartStats?.maxVisitors || 0).toLocaleString()}명)` 
@@ -790,13 +1145,66 @@ function App() {
                       </CardContent>
                     </Card>
                   </Grid>
+                  
                   <Grid item xs={12} md={6}>
-                    <Card>
+                    <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
                       <CardContent>
-                        <Typography variant="subtitle1" color="text.secondary">주중/주말 평균</Typography>
-                        <Typography variant="h5">
-                          주중: {(stats?.avgWeekdayVisitors || calculateChartStats?.avgWeekdayVisitors || 0).toLocaleString()}명 / 
-                          주말: {(stats?.avgWeekendVisitors || calculateChartStats?.avgWeekendVisitors || 0).toLocaleString()}명
+                        <Typography 
+                          variant="subtitle2" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            '&::before': {
+                              content: '""',
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              bgcolor: 'secondary.main',
+                              mr: 1,
+                              borderRadius: '50%'
+                            }
+                          }}
+                        >
+                          주중/주말 평균
+                        </Typography>
+                        <Typography 
+                          variant="h5"
+                          sx={{ 
+                            fontWeight: 600,
+                            color: 'text.primary',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 2
+                          }}
+                        >
+                          <Box 
+                            sx={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              bgcolor: 'primary.light',
+                              color: 'white',
+                              px: 2,
+                              py: 0.5,
+                              borderRadius: 1
+                            }}
+                          >
+                            주중: {(stats?.avgWeekdayVisitors || calculateChartStats?.avgWeekdayVisitors || 0).toLocaleString()}명
+                          </Box>
+                          <Box 
+                            sx={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              bgcolor: 'secondary.light',
+                              color: 'white',
+                              px: 2,
+                              py: 0.5,
+                              borderRadius: 1
+                            }}
+                          >
+                            주말: {(stats?.avgWeekendVisitors || calculateChartStats?.avgWeekendVisitors || 0).toLocaleString()}명
+                          </Box>
                         </Typography>
                       </CardContent>
                     </Card>
@@ -806,57 +1214,192 @@ function App() {
             )}
             
             {/* 방문자 추이 차트 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom align="center">
-                방문자 추이
-              </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={data}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            {data.length > 0 && (
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  mb: 4, 
+                  borderRadius: 2,
+                  background: 'white',
+                  boxShadow: 3
+                }}
+              >
+                <Typography 
+                  variant="h5" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&::before': {
+                      content: '""',
+                      display: 'block',
+                      width: 4,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      mr: 2,
+                      borderRadius: 1
+                    }
+                  }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="visitors" 
-                    stroke="#8884d8" 
-                    name="방문자 수" 
-                    activeDot={{ r: 8 }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="pageviews" 
-                    stroke="#82ca9d" 
-                    name="페이지뷰" 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Paper>
+                  방문자 추이
+                </Typography>
+                
+                <Box 
+                  sx={{ 
+                    borderRadius: 2, 
+                    p: 2, 
+                    bgcolor: '#f9fafc',
+                    border: '1px solid',
+                    borderColor: 'divider'
+                  }}
+                >
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart
+                      data={data}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fill: '#6c757d' }} 
+                        axisLine={{ stroke: '#dee2e6' }}
+                      />
+                      <YAxis 
+                        tick={{ fill: '#6c757d' }} 
+                        axisLine={{ stroke: '#dee2e6' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          borderRadius: 8,
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                          border: 'none'
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ 
+                          paddingTop: 20
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="visitors" 
+                        stroke="#3B4BDD" 
+                        name="방문자 수" 
+                        strokeWidth={3}
+                        dot={{ stroke: '#3B4BDD', strokeWidth: 2, r: 4, fill: 'white' }}
+                        activeDot={{ r: 6, stroke: '#3B4BDD', strokeWidth: 1, fill: '#3B4BDD' }} 
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="pageviews" 
+                        stroke="#21D07B" 
+                        name="페이지뷰" 
+                        strokeWidth={3}
+                        dot={{ stroke: '#21D07B', strokeWidth: 2, r: 4, fill: 'white' }}
+                        activeDot={{ r: 6, stroke: '#21D07B', strokeWidth: 1, fill: '#21D07B' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            )}
             
             {/* 요일별 평균 방문자 차트 */}
             {dayOfWeekData.length > 0 && (
-              <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom align="center">
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  mb: 4, 
+                  borderRadius: 2,
+                  background: 'white',
+                  boxShadow: 3
+                }}
+              >
+                <Typography 
+                  variant="h5" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&::before': {
+                      content: '""',
+                      display: 'block',
+                      width: 4,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      mr: 2,
+                      borderRadius: 1
+                    }
+                  }}
+                >
                   요일별 평균 방문자
                 </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={dayOfWeekData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="visitors" fill="#8884d8" name="방문자 수" />
-                    <Bar dataKey="pageviews" fill="#82ca9d" name="페이지뷰" />
-                  </BarChart>
-                </ResponsiveContainer>
+                
+                <Box 
+                  sx={{ 
+                    borderRadius: 2, 
+                    p: 2, 
+                    bgcolor: '#f9fafc',
+                    border: '1px solid',
+                    borderColor: 'divider'
+                  }}
+                >
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart
+                      data={dayOfWeekData}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eaecef" />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: '#6c757d' }} 
+                        axisLine={{ stroke: '#dee2e6' }}
+                      />
+                      <YAxis 
+                        tick={{ fill: '#6c757d' }} 
+                        axisLine={{ stroke: '#dee2e6' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          borderRadius: 8,
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                          border: 'none'
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ 
+                          paddingTop: 20
+                        }}
+                      />
+                      <Bar 
+                        dataKey="visitors" 
+                        name="방문자 수" 
+                        radius={[4, 4, 0, 0]}
+                        fill="#3B4BDD"
+                        barSize={36}
+                      />
+                      <Bar 
+                        dataKey="pageviews" 
+                        name="페이지뷰" 
+                        radius={[4, 4, 0, 0]}
+                        fill="#21D07B" 
+                        barSize={36}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
               </Paper>
             )}
             
@@ -865,85 +1408,305 @@ function App() {
               <>
                 {/* 요일별 방문 통계 */}
                 {Object.keys(stats.visitsByDayOfWeek).length > 0 && (
-                  <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom align="center">
+                  <Paper 
+                    sx={{ 
+                      p: 4, 
+                      mb: 4, 
+                      borderRadius: 2,
+                      background: 'white',
+                      boxShadow: 3
+                    }}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        fontWeight: 700, 
+                        mb: 3,
+                        pb: 2,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        '&::before': {
+                          content: '""',
+                          display: 'block',
+                          width: 4,
+                          height: 24,
+                          bgcolor: 'primary.main',
+                          mr: 2,
+                          borderRadius: 1
+                        }
+                      }}
+                    >
                       IFDO 요일별 방문 통계
                     </Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={[
-                          { name: '일요일', 방문수: stats.visitsByDayOfWeek[0] || 0 },
-                          { name: '월요일', 방문수: stats.visitsByDayOfWeek[1] || 0 },
-                          { name: '화요일', 방문수: stats.visitsByDayOfWeek[2] || 0 },
-                          { name: '수요일', 방문수: stats.visitsByDayOfWeek[3] || 0 },
-                          { name: '목요일', 방문수: stats.visitsByDayOfWeek[4] || 0 },
-                          { name: '금요일', 방문수: stats.visitsByDayOfWeek[5] || 0 },
-                          { name: '토요일', 방문수: stats.visitsByDayOfWeek[6] || 0 }
-                        ]}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="방문수" fill="#8884d8" name="방문 수" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    
+                    <Box 
+                      sx={{ 
+                        borderRadius: 2, 
+                        p: 2, 
+                        bgcolor: '#f9fafc',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart
+                          data={[
+                            { name: '일요일', 방문수: stats.visitsByDayOfWeek[0] || 0 },
+                            { name: '월요일', 방문수: stats.visitsByDayOfWeek[1] || 0 },
+                            { name: '화요일', 방문수: stats.visitsByDayOfWeek[2] || 0 },
+                            { name: '수요일', 방문수: stats.visitsByDayOfWeek[3] || 0 },
+                            { name: '목요일', 방문수: stats.visitsByDayOfWeek[4] || 0 },
+                            { name: '금요일', 방문수: stats.visitsByDayOfWeek[5] || 0 },
+                            { name: '토요일', 방문수: stats.visitsByDayOfWeek[6] || 0 }
+                          ]}
+                          margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eaecef" />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <YAxis 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              borderRadius: 8,
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                              border: 'none'
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{ 
+                              paddingTop: 20
+                            }}
+                          />
+                          <Bar 
+                            dataKey="방문수" 
+                            fill="url(#colorGradient)" 
+                            name="방문 수"
+                            radius={[4, 4, 0, 0]}
+                            barSize={40}
+                          />
+                          <defs>
+                            <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#3B4BDD" stopOpacity={0.8}/>
+                              <stop offset="100%" stopColor="#3B4BDD" stopOpacity={0.4}/>
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
                   </Paper>
                 )}
                 
                 {/* 시간별 방문 통계 */}
                 {Object.keys(stats.visitsByHour).length > 0 && (
-                  <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom align="center">
+                  <Paper 
+                    sx={{ 
+                      p: 4, 
+                      mb: 4, 
+                      borderRadius: 2,
+                      background: 'white',
+                      boxShadow: 3
+                    }}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        fontWeight: 700, 
+                        mb: 3,
+                        pb: 2,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        '&::before': {
+                          content: '""',
+                          display: 'block',
+                          width: 4,
+                          height: 24,
+                          bgcolor: 'primary.main',
+                          mr: 2,
+                          borderRadius: 1
+                        }
+                      }}
+                    >
                       IFDO 시간별 방문 통계
                     </Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={Array.from({ length: 24 }, (_, i) => ({
-                          hour: `${i}시`,
-                          방문수: stats.visitsByHour[i] || 0
-                        }))}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="방문수" fill="#82ca9d" name="방문 수" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    
+                    <Box 
+                      sx={{ 
+                        borderRadius: 2, 
+                        p: 2, 
+                        bgcolor: '#f9fafc',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      <ResponsiveContainer width="100%" height={350}>
+                        <AreaChart
+                          data={Array.from({ length: 24 }, (_, i) => ({
+                            hour: `${i}시`,
+                            방문수: stats.visitsByHour[i] || 0
+                          }))}
+                          margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eaecef" />
+                          <XAxis 
+                            dataKey="hour" 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <YAxis 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              borderRadius: 8,
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                              border: 'none'
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{ 
+                              paddingTop: 20
+                            }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="방문수" 
+                            stroke="#21D07B" 
+                            fill="url(#colorHourGradient)" 
+                            strokeWidth={2}
+                            name="방문 수" 
+                          />
+                          <defs>
+                            <linearGradient id="colorHourGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#21D07B" stopOpacity={0.8}/>
+                              <stop offset="100%" stopColor="#21D07B" stopOpacity={0.1}/>
+                            </linearGradient>
+                          </defs>
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </Box>
                   </Paper>
                 )}
 
                 {/* 검색어 통계 */}
                 {stats.visitsByKeyword && Object.keys(stats.visitsByKeyword).length > 0 && (
-                  <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom align="center">
+                  <Paper 
+                    sx={{ 
+                      p: 4, 
+                      mb: 4, 
+                      borderRadius: 2,
+                      background: 'white',
+                      boxShadow: 3
+                    }}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        fontWeight: 700, 
+                        mb: 3,
+                        pb: 2,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        '&::before': {
+                          content: '""',
+                          display: 'block',
+                          width: 4,
+                          height: 24,
+                          bgcolor: 'primary.main',
+                          mr: 2,
+                          borderRadius: 1
+                        }
+                      }}
+                    >
                       IFDO 검색어 통계 (상위 10개)
                     </Typography>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart
-                        layout="vertical"
-                        data={Object.entries(stats.visitsByKeyword)
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 10)
-                          .map(([keyword, count]) => ({
-                            keyword,
-                            count
-                          }))}
-                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis type="category" dataKey="keyword" width={100} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="count" fill="#8884d8" name="검색 횟수" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    
+                    <Box 
+                      sx={{ 
+                        borderRadius: 2, 
+                        p: 2, 
+                        bgcolor: '#f9fafc',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart
+                          layout="vertical"
+                          data={Object.entries(stats.visitsByKeyword)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .map(([keyword, count]) => ({
+                              keyword,
+                              count
+                            }))}
+                          margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#eaecef" horizontal={false} />
+                          <XAxis 
+                            type="number" 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="keyword" 
+                            width={100} 
+                            tick={{ fill: '#6c757d' }} 
+                            axisLine={{ stroke: '#dee2e6' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              borderRadius: 8,
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                              border: 'none'
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{ 
+                              paddingTop: 20
+                            }}
+                          />
+                          <Bar 
+                            dataKey="count" 
+                            name="검색 횟수" 
+                            radius={[0, 4, 4, 0]}
+                            fill="url(#colorKeywordGradient)"
+                            barSize={28}
+                            label={{ 
+                              position: 'right', 
+                              formatter: (value: number) => value,
+                              fill: '#6c757d',
+                              fontSize: 12
+                            }}
+                          />
+                          <defs>
+                            <linearGradient id="colorKeywordGradient" x1="0" y1="0" x2="1" y2="0">
+                              <stop offset="0%" stopColor="#3B4BDD" stopOpacity={0.9}/>
+                              <stop offset="100%" stopColor="#21D07B" stopOpacity={0.9}/>
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
                   </Paper>
                 )}
               </>
@@ -953,18 +1716,53 @@ function App() {
         
         {apiResponse && (
           <>
-            <Paper sx={{ p: 3, mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper 
+              sx={{ 
+                p: 4, 
+                mt: 3, 
+                mb: 4,
+                borderRadius: 2,
+                background: 'white',
+                boxShadow: 3
+              }}
+            >
+              <Typography 
+                variant="h5" 
+                sx={{ 
+                  fontWeight: 700, 
+                  mb: 3,
+                  pb: 2,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                  display: 'flex',
+                  alignItems: 'center',
+                  '&::before': {
+                    content: '""',
+                    display: 'block',
+                    width: 4,
+                    height: 24,
+                    bgcolor: 'primary.main',
+                    mr: 2,
+                    borderRadius: 1
+                  }
+                }}
+              >
                 API 응답 원본
               </Typography>
+              
               <Box 
                 component="pre" 
                 sx={{ 
-                  p: 2, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: 1,
+                  p: 3, 
+                  bgcolor: '#f8f9fa', 
+                  borderRadius: 2,
                   overflow: 'auto',
-                  maxHeight: '300px'
+                  maxHeight: '300px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.5,
+                  fontFamily: '"Consolas", "Monaco", monospace'
                 }}
               >
                 {JSON.stringify(apiResponse, null, 2)}
@@ -973,16 +1771,56 @@ function App() {
             
             {/* 데이터 테이블 추가 */}
             {apiResponse.data && apiResponse.data.data_header && apiResponse.data.data_content && (
-              <Paper sx={{ p: 3, mt: 3 }}>
-                <Typography variant="h6" gutterBottom align="center">
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  mt: 3, 
+                  mb: 4,
+                  borderRadius: 2,
+                  background: 'white',
+                  boxShadow: 3
+                }}
+              >
+                <Typography 
+                  variant="h5" 
+                  gutterBottom 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&::before': {
+                      content: '""',
+                      display: 'block',
+                      width: 4,
+                      height: 24,
+                      bgcolor: 'primary.main',
+                      mr: 2,
+                      borderRadius: 1
+                    }
+                  }}
+                >
                   방문 데이터 테이블
                 </Typography>
-                <TableContainer sx={{ maxHeight: 440 }}>
-                  <DataTable 
-                    headers={apiResponse.data.data_header} 
-                    content={apiResponse.data.data_content}
-                  />
-                </TableContainer>
+                
+                <Box 
+                  sx={{ 
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <TableContainer sx={{ maxHeight: 440 }}>
+                    <DataTable 
+                      headers={apiResponse.data.data_header} 
+                      content={apiResponse.data.data_content}
+                    />
+                  </TableContainer>
+                </Box>
               </Paper>
             )}
           </>
@@ -994,12 +1832,48 @@ function App() {
           onClose={handleClosePromptDialog}
           fullWidth
           maxWidth="md"
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              boxShadow: 24,
+              overflow: 'hidden'
+            }
+          }}
         >
-          <DialogTitle>GPT 분석 프롬프트 입력</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
+          <DialogTitle 
+            sx={{ 
+              bgcolor: 'primary.main',
+              color: 'white',
+              py: 2,
+              px: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(255,255,255,0.2)'
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </Box>
+            <Typography variant="h6" fontWeight={700}>GPT 분석 프롬프트 입력</Typography>
+          </DialogTitle>
+          
+          <DialogContent sx={{ py: 4, px: 3 }}>
+            <DialogContentText sx={{ mb: 3, color: 'text.secondary' }}>
               분석에 사용할 프롬프트를 입력하세요. 이 프롬프트는 GPT에게 데이터 분석 지시를 주는 내용입니다.
             </DialogContentText>
+            
             <TextField
               autoFocus
               margin="dense"
@@ -1011,12 +1885,42 @@ function App() {
               value={gptPrompt}
               onChange={(e) => setGptPrompt(e.target.value)}
               variant="outlined"
-              placeholder="예: 이 데이터에서 주목할만한 트렌드와 패턴을 분석해주세요."
-              sx={{ mt: 2 }}
+              placeholder="예: 이 데이터에서 가장 많이 검색된 키워드 Top 5를 분석해주세요."
+              sx={{ 
+                mt: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.5,
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'primary.main',
+                    borderWidth: '2px'
+                  }
+                }
+              }}
             />
+            
+            <Box sx={{ mt: 2, px: 2, py: 2, bgcolor: '#f8f9fa', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
+                프롬프트 예시:
+              </Typography>
+              <Typography variant="body2" component="div" sx={{ color: 'text.secondary' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  <li>이 데이터에서 가장 많이 검색된 키워드 Top 5를 분석해주세요.</li>
+                  <li>방문자 트래픽이 가장 많은 요일과 시간대는 언제이며, 이를 어떻게 활용할 수 있을까요?</li>
+                  <li>검색엔진별 유입 현황을 분석하고 마케팅 전략을 제안해주세요.</li>
+                </ul>
+              </Typography>
+            </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClosePromptDialog} color="primary">
+          
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: 'divider' }}>
+            <Button 
+              onClick={handleClosePromptDialog} 
+              color="inherit"
+              sx={{ 
+                fontWeight: 500,
+                px: 3 
+              }}
+            >
               취소
             </Button>
             <Button 
@@ -1024,6 +1928,11 @@ function App() {
               color="primary" 
               variant="contained"
               disabled={!gptPrompt.trim()}
+              sx={{ 
+                fontWeight: 500,
+                px: 3,
+                borderRadius: 1.5
+              }}
             >
               분석 요청
             </Button>
@@ -1068,7 +1977,18 @@ function DataTable({ headers, content }: DataTableProps) {
         <TableHead>
           <TableRow>
             {fieldKeys.map((key) => (
-              <TableCell key={key} align="left">
+              <TableCell 
+                key={key} 
+                align="left"
+                sx={{ 
+                  fontWeight: 600, 
+                  bgcolor: '#f5f7fa',
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                  px: 2.5,
+                  py: 2
+                }}
+              >
                 {headerMap[key] || `필드 ${key}`}
               </TableCell>
             ))}
@@ -1079,11 +1999,29 @@ function DataTable({ headers, content }: DataTableProps) {
             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
             .map((row, index) => {
               return (
-                <TableRow hover role="checkbox" tabIndex={-1} key={index}>
+                <TableRow 
+                  hover 
+                  role="checkbox" 
+                  tabIndex={-1} 
+                  key={index}
+                  sx={{ 
+                    '&:nth-of-type(even)': { 
+                      bgcolor: 'rgba(0, 0, 0, 0.02)' 
+                    }
+                  }}
+                >
                   {fieldKeys.map((key) => {
                     const value = row[key] || '';
                     return (
-                      <TableCell key={key} align="left">
+                      <TableCell 
+                        key={key} 
+                        align="left"
+                        sx={{ 
+                          px: 2.5,
+                          py: 1.5,
+                          fontSize: '0.875rem'
+                        }}
+                      >
                         {value}
                       </TableCell>
                     );
@@ -1103,6 +2041,14 @@ function DataTable({ headers, content }: DataTableProps) {
         onRowsPerPageChange={handleChangeRowsPerPage}
         labelRowsPerPage="행 개수:"
         labelDisplayedRows={({ from, to, count }) => `${from}-${to} / 전체 ${count}`}
+        sx={{ 
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+            fontWeight: 500,
+            color: 'text.secondary'
+          }
+        }}
       />
     </>
   );
