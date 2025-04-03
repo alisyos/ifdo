@@ -79,7 +79,6 @@ function App() {
   const [data, setData] = useState<AnalyticsData[]>([]);
   const [error, setError] = useState('');
   const [apiResponse, setApiResponse] = useState<any>(null);
-  const [testMode, setTestMode] = useState(false);
   const [gptAnalysis, setGptAnalysis] = useState<string>('');
   const [gptLoading, setGptLoading] = useState(false);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -142,7 +141,7 @@ function App() {
       // 분석할 데이터 준비
       const analyticsData = {
         stats: stats || {},
-        chartData: data
+        apiResponse: apiResponse
       };
       
       // 로컬 서버에 분석 요청
@@ -289,35 +288,6 @@ function App() {
     } catch (error) {
       console.error('통계 계산 오류:', error);
     }
-  };
-
-  // 샘플 데이터 생성 함수 (더 다양한 데이터)
-  const generateSampleData = (): AnalyticsData[] => {
-    // 현재 날짜로부터 30일치의 데이터 생성
-    const result: AnalyticsData[] = [];
-    const today = new Date();
-    
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(today.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-      
-      // 주말에는 트래픽이 적게, 주중에는 트래픽이 많게 설정
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      const baseVisitors = isWeekend ? 80 : 150;
-      const basePageviews = isWeekend ? 230 : 450;
-      
-      // 약간의 랜덤 변동 추가
-      const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 ~ 1.2 사이의 랜덤 계수
-      
-      result.push({
-        date: dateStr,
-        visitors: Math.round(baseVisitors * randomFactor),
-        pageviews: Math.round(basePageviews * randomFactor)
-      });
-    }
-    
-    return result;
   };
 
   // API 응답 데이터 처리 함수
@@ -737,18 +707,6 @@ function App() {
                 >
                   {loading ? '로딩 중...' : '데이터 로드'}
                 </Button>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => {
-                    setData(generateSampleData());
-                    setApiResponse(null);
-                    setTestMode(true);
-                  }}
-                  sx={{ flex: 1 }}
-                >
-                  테스트 모드
-                </Button>
               </Box>
             </Grid>
             <Grid item xs={12} md={6} sx={{ mt: 2 }}>
@@ -757,7 +715,7 @@ function App() {
                 color="secondary"
                 startIcon={<PsychologyIcon />}
                 onClick={handleOpenPromptDialog}
-                disabled={loading || (!data.length && !testMode)}
+                disabled={loading || !apiResponse}
                 fullWidth
               >
                 GPT 분석
